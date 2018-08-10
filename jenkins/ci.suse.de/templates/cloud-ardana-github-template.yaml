@@ -1,0 +1,60 @@
+- job-template:
+    name: 'cloud-ardana{version}-github-automation'
+    project-type: multijob
+    node: cloud-trigger
+
+    scm:
+      - git:
+          url: 'http://github.com/SUSE-cloud/automation.git'
+          refspec: 'refs/pull/*:refs/heads/pull/*'
+          timeout: 5  # minutes
+
+    triggers:
+      - timed: 'H H */2 * *'
+      - pollscm:
+          cron: 'H/5 * * * *'
+
+    logrotate:
+      numToKeep: -1
+      daysToKeep: 14
+
+    builders:
+      - shell: |
+          echo starttime=$(date +%s) > build_start_time
+          #XXX: Fail if not an ardana-related change
+
+      - multijob:
+          name: 'Standard checks'
+          condition: SUCCESSFUL
+          projects:
+            - name: cloud-ardana{version}-job-std-min-x86_64
+              node-label: cloud-trigger
+
+    publishers:
+      - trigger-parameterized-builds:
+        - project:
+          - github-status
+          condition: SUCCESS
+          property-file: build_start_time
+          fail-on-missing: True
+          predefined-parameters: |
+            gh_context=suse/ardana{version}
+            gh_status=success
+        - project
+          - github-status
+          condition: FAILED
+          property-file: build_start_time
+          fail-on-missing: True
+          predefined-parameters: |
+            gh_context=suse/ardana{version}
+            gh_status=failure
+
+- job:
+    name: github-status
+
+    builders:
+      - shell: |
+          #!/bin/bash
+          curl -XPOST -H "Authorization: token ${OAUTH-TOKEN:?}" \
+            -d \{"state":"${gh_status:?}","context":"${gh_context:?}"} \
+            https://api.github.com/repos/SUSE-cloud/automation/statuses/${GIT_COMMIT}

@@ -6,6 +6,7 @@
     build_pool_size: 5
     jobs:
         - 'cloud-ardana{version}-gating'
+        - 'cloud-ardana{version}-github-automation'
 
 - project:
     name: cloud-ardana8-x86_64
