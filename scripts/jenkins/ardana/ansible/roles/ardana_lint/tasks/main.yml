@@ -16,8 +16,7 @@
 ---
 - block:
     - name: Install dependencies
-      zypper:
-        name: python2-pycrypto
+      command: 'zypper --non-interactive install -t pattern devel_C_C++'
       become: yes
 
     - name: Install ansible-lint
